@@ -1,12 +1,8 @@
 export default async function handler(req, res) {
     const apiKey = process.env.HUGGING_FACE_TOKEN;
     
-    // Usamos el modelo original que es el correcto para esta tarea
-    const modelEndpoint = "https://api-inference.huggingface.co/models/ai-forever/Real-ESRGAN";
-
-    // --- CÓDIGO DE DIAGNÓSTICO #1 ---
-    // Esta línea se imprimirá en los logs de Vercel para ver la URL que se está usando.
-    console.log("Intentando llamar a la API en esta URL:", modelEndpoint);
+    // CAMBIO FINAL: Usamos un endpoint de un modelo Real-ESRGAN comunitario y estable.
+    const modelEndpoint = "https://api-inference.huggingface.co/models/replicate/real-esrgan";
 
     const contentType = req.headers['content-type'];
     const imageBlob = req.body;
@@ -23,11 +19,7 @@ export default async function handler(req, res) {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("Error detallado de la API de Hugging Face:", errorText);
-            
-            // --- CÓDIGO DE DIAGNÓSTICO #2 ---
-            // Este es el nuevo mensaje de error que debemos ver para confirmar la actualización.
-            throw new Error(`ESTOY USANDO LA VERSIÓN NUEVA DEL CÓDIGO. El error original fue: ${response.status} - ${errorText}`);
+            throw new Error(`Error de la API de Hugging Face: ${response.status} - ${errorText}`);
         }
 
         const resultBlob = await response.blob();
