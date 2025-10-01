@@ -11,6 +11,7 @@ let originalFile = null;
 uploadInput.addEventListener('change', (event) => {
   originalFile = event.target.files[0];
   if (!originalFile) return;
+
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
@@ -23,10 +24,11 @@ uploadInput.addEventListener('change', (event) => {
     img.src = e.target.result;
   };
   reader.readAsDataURL(originalFile);
+
   processButton.disabled = false;
-  processButton.textContent = 'Mejorar con IA (DeepAI)';
+  processButton.textContent = 'Mejorar con IA (Hugging Face)';
   resultContainer.style.display = 'none';
-  statusText.textContent = 'Imagen lista para ser enviada a la IA.';
+  statusText.textContent = 'Imagen lista para enviar a la IA.';
 });
 
 processButton.addEventListener('click', async () => {
@@ -38,11 +40,15 @@ processButton.addEventListener('click', async () => {
   statusText.textContent = 'Enviando imagen a la IA...';
   resultContainer.style.display = 'none';
 
-  const formData = new FormData();
-  formData.append('image', originalFile);
-
   try {
-    const response = await fetch('/api/upscale', { method: 'POST', body: formData });
+    // Enviar el archivo "crudo" como body (SIN FormData)
+    const response = await fetch('/api/upscale', {
+      method: 'POST',
+      headers: {
+        'Content-Type': originalFile.type || 'application/octet-stream',
+      },
+      body: originalFile, // ← binario directo
+    });
 
     if (!response.ok) {
       let msg = 'Ocurrió un error en el servidor.';
@@ -52,6 +58,7 @@ processButton.addEventListener('click', async () => {
 
     const imageBlob = await response.blob();
     const imageUrl = URL.createObjectURL(imageBlob);
+
     resultImage.src = imageUrl;
     downloadLink.href = imageUrl;
     resultContainer.style.display = 'block';

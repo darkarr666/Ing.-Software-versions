@@ -1,69 +1,79 @@
-// /api/upscale.js  (Vercel Serverless Function - Node runtime)
+// /api/upscale.js  — Vercel Serverless Function (Node.js)
+
+const HF_MODEL = 'nateraw/real-esrgan'; // super-resolución (Real-ESRGAN)
 
 export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') {
       res.statusCode = 405;
-      return res.json({ detail: 'Usa POST con multipart/form-data y el campo "image"' });
+      return res.json({ detail: 'Usa POST enviando el binario de la imagen en el body' });
     }
 
-    const apiKey = (process.env.DEEPAI_API_KEY || '').trim();
+    const apiKey = (process.env.HF_API_KEY || '').trim();
     if (!apiKey) {
       res.statusCode = 500;
-      return res.json({ detail: 'Falta DEEPAI_API_KEY en el servidor' });
+      return res.json({ detail: 'Falta HF_API_KEY en el servidor' });
     }
 
-    // Diagnóstico (no expongas la key completa en prod)
-    console.log('DeepAI key starts with:', apiKey.slice(0, 6));
+    // Leemos el cuerpo completo como Buffer (para poder reintentar si hace falta)
+    const chunks = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    const imageBuffer = Buffer.concat(chunks);
 
-    const contentType = (req.headers['content-type'] || '').toLowerCase();
-    if (!contentType.startsWith('multipart/form-data')) {
+    if (!imageBuffer?.length) {
       res.statusCode = 400;
-      return res.json({ detail: 'Content-Type debe ser multipart/form-data' });
+      return res.json({ detail: 'No llegó imagen en el body' });
     }
 
-    // Proxy del stream al endpoint de DeepAI
-    const deepaiRes = await fetch('https://api.deepai.org/api/torch-srgan', {
-      method: 'POST',
-      headers: {
-        'api-key': apiKey,
-        'Content-Type': req.headers['content-type'], // conserva el boundary
-      },
-      body: req,             // <--- stream
-      duplex: 'half',        // <--- CLAVE en Node 18+ cuando envías streams
-    });
+    const contentTypeIn =
+      (req.headers['content-type'] && String(req.headers['content-type'])) ||
+      'application/octet-stream';
 
-    const deepaiText = await deepaiRes.text();
-    if (!deepaiRes.ok) {
-      res.statusCode = deepaiRes.status;
-      return res.json({ detail: `DeepAI: ${deepaiText}` });
+    // Función que llama a HF con reintentos si el modelo está cargando
+    async function callHFWithRetry(buffer, tries = 3) {
+      let lastText = '';
+      for (let i = 0; i < tries; i++) {
+        const hfRes = await fetch(`https://api-inference.huggingface.co/models/${HF_MODEL}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': contentTypeIn, // image/png o image/jpeg normalmente
+            Accept: 'image/png',           // pedimos imagen
+          },
+          body: buffer, // Buffer (no stream) → no hace falta 'duplex'
+        });
+
+        // Si el modelo está "cargando", HF devuelve 503 con JSON (estimated_time)
+        if (hfRes.status === 503) {
+          const j = await hfRes.json().catch(() => null);
+          const waitMs = Math.ceil((j?.estimated_time ?? 5) * 1000);
+          await new Promise(r => setTimeout(r, waitMs));
+          continue; // reintenta
+        }
+
+        const ct = hfRes.headers.get('Content-Type') || '';
+        const text = await (ct.includes('application/json') ? hfRes.text() : Promise.resolve(''));
+        lastText = text;
+
+        if (!hfRes.ok) {
+          // Error real (no es 503 de carga)
+          throw new Error(text || `HF error ${hfRes.status}`);
+        }
+
+        // Ok: devolvemos la imagen
+        const arrBuf = await hfRes.arrayBuffer();
+        return { buf: Buffer.from(arrBuf), ct: ct || 'image/png' };
+      }
+      throw new Error(lastText || 'Modelo ocupado. Intenta de nuevo.');
     }
 
-    let data;
-    try { data = JSON.parse(deepaiText); }
-    catch {
-      res.statusCode = 502;
-      return res.json({ detail: 'Respuesta no válida de DeepAI' });
-    }
+    const { buf, ct } = await callHFWithRetry(imageBuffer);
 
-    const outputUrl = data?.output_url;
-    if (!outputUrl) {
-      res.statusCode = 502;
-      return res.json({ detail: 'DeepAI no devolvió output_url' });
-    }
-
-    const imgRes = await fetch(outputUrl);
-    if (!imgRes.ok) {
-      res.statusCode = 502;
-      return res.json({ detail: 'No se pudo descargar la imagen resultante' });
-    }
-
-    const buf = Buffer.from(await imgRes.arrayBuffer());
-    res.setHeader('Content-Type', imgRes.headers.get('Content-Type') || 'image/png');
+    res.setHeader('Content-Type', ct);
     res.statusCode = 200;
     return res.end(buf);
   } catch (e) {
-    console.error('Error en /api/upscale:', e);
+    console.error('Error en /api/upscale (HF):', e);
     res.statusCode = 500;
     return res.json({ detail: e?.message || 'Error interno' });
   }
