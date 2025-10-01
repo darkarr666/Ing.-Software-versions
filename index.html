@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prototipo con IA para Mejora de Texto</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 20px auto; background-color: #f4f4f9; color: #333; }
+        h1, h2 { color: #1a1a1a; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+        img, canvas { max-width: 100%; border: 1px solid #ccc; background-color: white; margin-top: 10px; }
+        #controls { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        button { font-size: 1.1em; padding: 10px 20px; border: none; background-color: #007bff; color: white; border-radius: 5px; cursor: pointer; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #status { font-weight: bold; color: #555; height: 20px; }
+        #result-container { display: none; }
+        a { font-size: 1.1em; text-decoration: none; color: #007bff; }
+    </style>
+</head>
+<body>
+    <h1>Prototipo con IA para Mejora de Texto 🤖</h1>
+    <div id="controls">
+        <p>Sube una imagen. La IA la analizará y reconstruirá para máxima claridad.</p>
+        <input type="file" id="uploadInput" accept="image/jpeg, image/png">
+        <br><br>
+        <button id="processButton" disabled>1. Cargar Imagen Primero</button>
+        <p id="status"></p>
+    </div>
+    <hr>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 300px;">
+            <h2>Imagen Original</h2>
+            <canvas id="originalCanvas"></canvas>
+        </div>
+        <div id="result-container" style="flex: 1; min-width: 300px;">
+            <h2>Imagen Mejorada por IA</h2>
+            <img id="resultImage" src="" alt="Imagen mejorada por la IA">
+            <br>
+            <a id="downloadLink" href="" download="imagen_mejorada_ia.png">Descargar Imagen Mejorada</a>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
