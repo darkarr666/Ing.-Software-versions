@@ -1,20 +1,38 @@
 export default async function handler(req, res) {
-    console.log("Iniciando función de prueba de API key.");
-
     const apiKey = process.env.DEEPAI_API_KEY;
+    const modelEndpoint = "https://api.deepai.org/api/torch-srgan";
 
-    // Comprobamos si la clave existe y tiene un largo razonable
-    if (apiKey && apiKey.length > 10) { 
-        console.log("Prueba exitosa: La clave API fue encontrada en el servidor.");
-        res.status(200).json({ 
-            status: "Éxito", 
-            message: "La clave API (DEEPAI_API_KEY) fue encontrada correctamente en el servidor de Vercel." 
+    try {
+        const response = await fetch(modelEndpoint, {
+            method: "POST",
+            headers: {
+                "api-key": apiKey,
+                "Content-Type": req.headers['content-type'],
+            },
+            body: req.body,
         });
-    } else {
-        console.error("Prueba fallida: La clave API NO fue encontrada o está vacía.");
-        res.status(500).json({ 
-            status: "Error", 
-            message: "La clave API (DEEPAI_API_KEY) NO fue encontrada o está vacía en el servidor de Vercel. Revisa la configuración del proyecto." 
-        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Error de la API de DeepAI: ${error.err || response.statusText}`);
+        }
+
+        const data = await response.json();
+        const outputUrl = data.output_url;
+
+        const imageResponse = await fetch(outputUrl);
+        if (!imageResponse.ok) {
+            throw new Error("No se pudo descargar la imagen mejorada desde DeepAI.");
+        }
+        
+        const resultBlob = await imageResponse.blob();
+        
+        res.setHeader('Content-Type', resultBlob.type);
+        const buffer = await resultBlob.arrayBuffer();
+        res.send(Buffer.from(buffer));
+
+    } catch (error) {
+        console.error("Error en la función del servidor:", error.message);
+        res.status(500).json({ detail: error.message });
     }
 }

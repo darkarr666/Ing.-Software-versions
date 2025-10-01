@@ -2,6 +2,9 @@ const uploadInput = document.getElementById('uploadInput');
 const originalCanvas = document.getElementById('originalCanvas');
 const processButton = document.getElementById('processButton');
 const statusText = document.getElementById('status');
+const resultContainer = document.getElementById('result-container');
+const resultImage = document.getElementById('resultImage');
+const downloadLink = document.getElementById('downloadLink');
 
 let originalFile = null;
 
@@ -21,8 +24,9 @@ uploadInput.addEventListener('change', (event) => {
     };
     reader.readAsDataURL(originalFile);
     processButton.disabled = false;
-    processButton.textContent = "Iniciar Diagnóstico";
-    statusText.textContent = "Listo para iniciar prueba.";
+    processButton.textContent = "Mejorar con IA (DeepAI)";
+    resultContainer.style.display = 'none';
+    statusText.textContent = "Imagen lista para ser enviada a la IA.";
 });
 
 processButton.addEventListener('click', async () => {
@@ -31,21 +35,33 @@ processButton.addEventListener('click', async () => {
         return;
     }
     processButton.disabled = true;
-    statusText.textContent = "Ejecutando prueba de diagnóstico en el servidor...";
+    statusText.textContent = "Enviando imagen a la IA...";
+    resultContainer.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('image', originalFile);
 
     try {
-        // Llamamos a nuestra función de prueba
-        const response = await fetch("/api/upscale", { method: "POST" });
-        const data = await response.json();
+        const response = await fetch("/api/upscale", {
+            method: "POST",
+            body: formData,
+        });
 
-        // Mostramos el resultado de la prueba en una alerta para que sea muy claro
-        alert(`Resultado del diagnóstico del servidor:\n\nStatus: ${data.status}\nMensaje: ${data.message}`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Ocurrió un error en el servidor.");
+        }
         
-        statusText.textContent = "Prueba completada.";
-
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        
+        resultImage.src = imageUrl;
+        downloadLink.href = imageUrl;
+        resultContainer.style.display = 'block';
+        statusText.textContent = "¡Imagen mejorada por la IA con éxito!";
     } catch (error) {
-        alert(`Error al contactar la función de prueba: ${error.message}`);
+        statusText.textContent = `Error: ${error.message}`;
+        alert(`Error: ${error.message}`);
     }
-
     processButton.disabled = false;
 });
