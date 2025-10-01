@@ -18,7 +18,7 @@ uploadInput.addEventListener('change', (event) => {
     reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-            const ctx = originalCanvas.getContext('d');
+            const ctx = originalCanvas.getContext('2d');
             originalCanvas.width = img.width;
             originalCanvas.height = img.height;
             ctx.drawImage(img, 0, 0);
@@ -28,15 +28,13 @@ uploadInput.addEventListener('change', (event) => {
     reader.readAsDataURL(originalFile);
 
     processButton.disabled = false;
-    processButton.textContent = "Mejorar con IA";
+    processButton.textContent = "Mejorar con IA (Hugging Face)";
     resultContainer.style.display = 'none';
     statusText.textContent = "Imagen lista para ser enviada a la IA.";
 });
 
-// --- FUNCIÓN PARA ESPERAR ---
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// --- LÓGICA DE PROCESAMIENTO CON REPLICATE ---
+// --- LÓGICA DE PROCESAMIENTO CON HUGGING FACE ---
 processButton.addEventListener('click', async () => {
     if (!originalFile) {
         alert("Por favor, sube una imagen primero.");
@@ -44,44 +42,31 @@ processButton.addEventListener('click', async () => {
     }
 
     processButton.disabled = true;
-    statusText.textContent = "Enviando imagen a la IA...";
+    statusText.textContent = "Enviando imagen a la IA... (El primer uso puede tardar un minuto)";
     resultContainer.style.display = 'none';
 
-    const dataUrl = originalCanvas.toDataURL('image/png');
-
     try {
-        const startResponse = await fetch("/api/replicate", {
+        // Obtenemos el tipo de archivo para enviarlo en el header
+        const fileType = originalFile.type;
+
+        const response = await fetch("/api/upscale", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageUrl: dataUrl }),
+            headers: { "Content-Type": fileType }, // Enviamos el tipo de archivo correcto
+            body: originalFile, 
         });
 
-        let prediction = await startResponse.json();
-        if (startResponse.status !== 201) {
-            throw new Error(prediction.detail || "Error al iniciar el proceso en la API.");
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || "Ocurrió un error en el servidor.");
         }
-
-        statusText.textContent = "La IA está trabajando... Esperando resultado.";
-
-        while (prediction.status !== "succeeded" && prediction.status !== "failed") {
-            await sleep(2000); 
-            const checkResponse = await fetch("/api/replicate-check", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ predictionUrl: prediction.urls.get }),
-            });
-            prediction = await checkResponse.json();
-        }
-
-        if (prediction.status === "succeeded") {
-            const imageUrl = prediction.output;
-            resultImage.src = imageUrl;
-            downloadLink.href = imageUrl;
-            resultContainer.style.display = 'block';
-            statusText.textContent = "¡Imagen mejorada por la IA con éxito!";
-        } else {
-            throw new Error(`El proceso de IA falló: ${prediction.error}`);
-        }
+        
+        const imageBlob = await response.blob();
+        const imageUrl = URL.createObjectURL(imageBlob);
+        
+        resultImage.src = imageUrl;
+        downloadLink.href = imageUrl;
+        resultContainer.style.display = 'block';
+        statusText.textContent = "¡Imagen mejorada por la IA con éxito!";
 
     } catch (error) {
         statusText.textContent = `Error: ${error.message}`;
