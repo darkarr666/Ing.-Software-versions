@@ -1,8 +1,9 @@
 export default async function handler(req, res) {
     const apiKey = process.env.HUGGING_FACE_TOKEN;
-    const modelEndpoint = "https://api-inference.huggingface.co/models/ai-forever/Real-ESRGAN";
+    
+    // HEMOS CAMBIADO LA URL POR UN MODELO MÁS ESTABLE
+    const modelEndpoint = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-x4-upscaler";
 
-    // Obtenemos el tipo de contenido del header que nos envía el script.js
     const contentType = req.headers['content-type'];
     const imageBlob = req.body;
 
@@ -11,7 +12,7 @@ export default async function handler(req, res) {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${apiKey}`,
-                "Content-Type": contentType, // Usamos el tipo de archivo original
+                "Content-Type": contentType,
             },
             body: imageBlob,
         });
