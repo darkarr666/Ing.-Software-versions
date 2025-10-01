@@ -1,4 +1,3 @@
-// --- OBTENER ELEMENTOS ---
 const uploadInput = document.getElementById('uploadInput');
 const originalCanvas = document.getElementById('originalCanvas');
 const processButton = document.getElementById('processButton');
@@ -9,11 +8,9 @@ const downloadLink = document.getElementById('downloadLink');
 
 let originalFile = null;
 
-// --- MANEJO DE CARGA DE IMAGEN ---
 uploadInput.addEventListener('change', (event) => {
     originalFile = event.target.files[0];
     if (!originalFile) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
         const img = new Image();
@@ -26,33 +23,29 @@ uploadInput.addEventListener('change', (event) => {
         img.src = e.target.result;
     };
     reader.readAsDataURL(originalFile);
-
     processButton.disabled = false;
-    processButton.textContent = "Mejorar con IA (Hugging Face)";
+    processButton.textContent = "Mejorar con IA (DeepAI)";
     resultContainer.style.display = 'none';
     statusText.textContent = "Imagen lista para ser enviada a la IA.";
 });
 
-
-// --- LÓGICA DE PROCESAMIENTO CON HUGGING FACE ---
 processButton.addEventListener('click', async () => {
     if (!originalFile) {
         alert("Por favor, sube una imagen primero.");
         return;
     }
-
     processButton.disabled = true;
-    statusText.textContent = "Enviando imagen a la IA... (El primer uso puede tardar un minuto)";
+    statusText.textContent = "Enviando imagen a la IA...";
     resultContainer.style.display = 'none';
 
-    try {
-        // Obtenemos el tipo de archivo para enviarlo en el header
-        const fileType = originalFile.type;
+    // DeepAI prefiere recibir la imagen como FormData
+    const formData = new FormData();
+    formData.append('image', originalFile);
 
+    try {
         const response = await fetch("/api/upscale", {
             method: "POST",
-            headers: { "Content-Type": fileType }, // Enviamos el tipo de archivo correcto
-            body: originalFile, 
+            body: formData, // Enviamos el FormData
         });
 
         if (!response.ok) {
@@ -67,11 +60,9 @@ processButton.addEventListener('click', async () => {
         downloadLink.href = imageUrl;
         resultContainer.style.display = 'block';
         statusText.textContent = "¡Imagen mejorada por la IA con éxito!";
-
     } catch (error) {
         statusText.textContent = `Error: ${error.message}`;
         alert(`Error: ${error.message}`);
     }
-
     processButton.disabled = false;
 });

@@ -1,28 +1,36 @@
 export default async function handler(req, res) {
-    const apiKey = process.env.HUGGING_FACE_TOKEN;
+    const apiKey = process.env.DEEPAI_API_KEY;
     
-    // CAMBIO FINAL: Usamos un endpoint de un modelo Real-ESRGAN comunitario y estable.
-    const modelEndpoint = "https://api-inference.huggingface.co/models/replicate/real-esrgan";
-
-    const contentType = req.headers['content-type'];
-    const imageBlob = req.body;
+    // Este es el endpoint de DeepAI para mejorar resolución
+    const modelEndpoint = "https://api.deepai.org/api/torch-srgan";
 
     try {
+        // DeepAI usa 'multipart/form-data', por lo que reenviamos los headers y el body
         const response = await fetch(modelEndpoint, {
             method: "POST",
             headers: {
-                Authorization: `Bearer ${apiKey}`,
-                "Content-Type": contentType,
+                "api-key": apiKey,
+                // Pasamos los headers del frontend que contienen la info del form-data
+                ...req.headers,
             },
-            body: imageBlob,
+            body: req.body,
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Error de la API de Hugging Face: ${response.status} - ${errorText}`);
+            const error = await response.json();
+            throw new Error(`Error de la API de DeepAI: ${error.err || response.statusText}`);
         }
 
-        const resultBlob = await response.blob();
+        const data = await response.json();
+        const outputUrl = data.output_url;
+
+        // Descargamos la imagen mejorada para enviarla al usuario
+        const imageResponse = await fetch(outputUrl);
+        if (!imageResponse.ok) {
+            throw new Error("No se pudo descargar la imagen mejorada desde DeepAI.");
+        }
+        
+        const resultBlob = await imageResponse.blob();
         
         res.setHeader('Content-Type', resultBlob.type);
         const buffer = await resultBlob.arrayBuffer();
