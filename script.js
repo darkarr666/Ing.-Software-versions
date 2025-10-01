@@ -18,7 +18,7 @@ uploadInput.addEventListener('change', (event) => {
     reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-            const ctx = originalCanvas.getContext('2d');
+            const ctx = originalCanvas.getContext('d');
             originalCanvas.width = img.width;
             originalCanvas.height = img.height;
             ctx.drawImage(img, 0, 0);
@@ -74,7 +74,7 @@ processButton.addEventListener('click', async () => {
         }
 
         if (prediction.status === "succeeded") {
-            const imageUrl = prediction.output[0];
+            const imageUrl = prediction.output;
             resultImage.src = imageUrl;
             downloadLink.href = imageUrl;
             resultContainer.style.display = 'block';
