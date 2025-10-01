@@ -1,44 +1,20 @@
 export default async function handler(req, res) {
+    console.log("Iniciando función de prueba de API key.");
+
     const apiKey = process.env.DEEPAI_API_KEY;
-    
-    // Línea de diagnóstico para estar 100% seguros
-    console.log("Revisando la API Key de DeepAI en el servidor:", apiKey ? "Clave encontrada" : "Clave NO encontrada (undefined)");
 
-    const modelEndpoint = "https://api.deepai.org/api/torch-srgan";
-
-    try {
-        const response = await fetch(modelEndpoint, {
-            method: "POST",
-            headers: {
-                // ESTA ES LA CORRECCIÓN:
-                // Solo enviamos los encabezados estrictamente necesarios.
-                "api-key": apiKey,
-                "Content-Type": req.headers['content-type'], // El tipo de contenido que nos envió el navegador
-            },
-            body: req.body,
+    // Comprobamos si la clave existe y tiene un largo razonable
+    if (apiKey && apiKey.length > 10) { 
+        console.log("Prueba exitosa: La clave API fue encontrada en el servidor.");
+        res.status(200).json({ 
+            status: "Éxito", 
+            message: "La clave API (DEEPAI_API_KEY) fue encontrada correctamente en el servidor de Vercel." 
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Error de la API de DeepAI: ${error.err || response.statusText}`);
-        }
-
-        const data = await response.json();
-        const outputUrl = data.output_url;
-
-        const imageResponse = await fetch(outputUrl);
-        if (!imageResponse.ok) {
-            throw new Error("No se pudo descargar la imagen mejorada desde DeepAI.");
-        }
-        
-        const resultBlob = await imageResponse.blob();
-        
-        res.setHeader('Content-Type', resultBlob.type);
-        const buffer = await resultBlob.arrayBuffer();
-        res.send(Buffer.from(buffer));
-
-    } catch (error) {
-        console.error("Error en la función del servidor:", error.message);
-        res.status(500).json({ detail: error.message });
+    } else {
+        console.error("Prueba fallida: La clave API NO fue encontrada o está vacía.");
+        res.status(500).json({ 
+            status: "Error", 
+            message: "La clave API (DEEPAI_API_KEY) NO fue encontrada o está vacía en el servidor de Vercel. Revisa la configuración del proyecto." 
+        });
     }
 }
