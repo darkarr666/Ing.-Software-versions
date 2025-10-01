@@ -7,11 +7,9 @@ const resultContainer = document.getElementById('result-container');
 const resultImage = document.getElementById('resultImage');
 const downloadLink = document.getElementById('downloadLink');
 
-// LA LÍNEA DE const apiKey = '...' SE ELIMINA POR COMPLETO DE AQUÍ
-
 let originalFile = null;
 
-// --- MANEJO DE CARGA DE IMAGEN (sin cambios) ---
+// --- MANEJO DE CARGA DE IMAGEN ---
 uploadInput.addEventListener('change', (event) => {
     originalFile = event.target.files[0];
     if (!originalFile) return;
@@ -30,12 +28,12 @@ uploadInput.addEventListener('change', (event) => {
     reader.readAsDataURL(originalFile);
 
     processButton.disabled = false;
-    processButton.textContent = "Mejorar con IA (Replicate)";
+    processButton.textContent = "Mejorar con IA";
     resultContainer.style.display = 'none';
     statusText.textContent = "Imagen lista para ser enviada a la IA.";
 });
 
-// --- FUNCIÓN PARA ESPERAR (sin cambios) ---
+// --- FUNCIÓN PARA ESPERAR ---
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- LÓGICA DE PROCESAMIENTO CON REPLICATE ---
@@ -44,7 +42,6 @@ processButton.addEventListener('click', async () => {
         alert("Por favor, sube una imagen primero.");
         return;
     }
-    // El chequeo de la API Key también se elimina de aquí
 
     processButton.disabled = true;
     statusText.textContent = "Enviando imagen a la IA...";
@@ -53,7 +50,6 @@ processButton.addEventListener('click', async () => {
     const dataUrl = originalCanvas.toDataURL('image/png');
 
     try {
-        // La clave YA NO se envía en el body. El backend se encarga de ella.
         const startResponse = await fetch("/api/replicate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -72,7 +68,6 @@ processButton.addEventListener('click', async () => {
             const checkResponse = await fetch("/api/replicate-check", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                 // La clave tampoco se envía aquí
                 body: JSON.stringify({ predictionUrl: prediction.urls.get }),
             });
             prediction = await checkResponse.json();
