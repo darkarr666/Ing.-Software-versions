@@ -1,17 +1,19 @@
 export default async function handler(req, res) {
     const apiKey = process.env.DEEPAI_API_KEY;
     
-    // Este es el endpoint de DeepAI para mejorar resolución
+    // Línea de diagnóstico para estar 100% seguros
+    console.log("Revisando la API Key de DeepAI en el servidor:", apiKey ? "Clave encontrada" : "Clave NO encontrada (undefined)");
+
     const modelEndpoint = "https://api.deepai.org/api/torch-srgan";
 
     try {
-        // DeepAI usa 'multipart/form-data', por lo que reenviamos los headers y el body
         const response = await fetch(modelEndpoint, {
             method: "POST",
             headers: {
+                // ESTA ES LA CORRECCIÓN:
+                // Solo enviamos los encabezados estrictamente necesarios.
                 "api-key": apiKey,
-                // Pasamos los headers del frontend que contienen la info del form-data
-                ...req.headers,
+                "Content-Type": req.headers['content-type'], // El tipo de contenido que nos envió el navegador
             },
             body: req.body,
         });
@@ -24,7 +26,6 @@ export default async function handler(req, res) {
         const data = await response.json();
         const outputUrl = data.output_url;
 
-        // Descargamos la imagen mejorada para enviarla al usuario
         const imageResponse = await fetch(outputUrl);
         if (!imageResponse.ok) {
             throw new Error("No se pudo descargar la imagen mejorada desde DeepAI.");
